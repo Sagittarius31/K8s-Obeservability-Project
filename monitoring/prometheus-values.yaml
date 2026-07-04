@@ -1,0 +1,61 @@
+# Helm values for the kube-prometheus-stack chart.
+# Install with:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#   helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring --create-namespace \
+#     -f monitoring/prometheus-values.yaml
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    # Allow Prometheus to discover ServiceMonitors in ANY namespace, not just
+    # the monitoring namespace - otherwise it will only see itself.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    ruleSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector: {}
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  # Slack routing lives in monitoring/alertmanager-config.yaml (kept separate
+  # so you don't put a webhook URL directly in this file / commit history).
+
+grafana:
+  enabled: true
+  adminPassword: changeme123   # change this before applying, or use --set on the CLI
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  # Auto-import the dashboard from monitoring/grafana-dashboard.json via a
+  # ConfigMap with this label - the Grafana sidecar picks it up automatically.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+  service:
+    type: ClusterIP   # use LoadBalancer if you want a public IP, or port-forward instead
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true

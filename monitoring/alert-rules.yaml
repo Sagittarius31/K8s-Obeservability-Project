@@ -1,0 +1,59 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo-app-alerts
+  namespace: demo-app
+  labels:
+    # Must match ruleSelector in prometheus-values.yaml so the Operator picks this up
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: demo-app.rules
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(app_http_requests_total{http_status="500"}[5m]))
+            /
+            sum(rate(app_http_requests_total[5m]))
+            > 0.10
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Error rate above 10% on demo-app"
+            description: "More than 10% of requests have returned HTTP 500 for the last 5 minutes."
+
+        - alert: HighLatencyP95
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le)
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "p95 latency above 800ms on demo-app"
+            description: "95th percentile request latency has exceeded 800ms for 5 minutes."
+
+        - alert: PodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="demo-app"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod is crash-looping"
+            description: "{{ $labels.pod }} has restarted more than 3 times in 15 minutes."
+
+        - alert: HighMemoryUsage
+          expr: |
+            sum(container_memory_working_set_bytes{namespace="demo-app", container="demo-app"}) by (pod)
+            /
+            sum(kube_pod_container_resource_limits{namespace="demo-app", container="demo-app", resource="memory"}) by (pod)
+            > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod memory usage above 85% of limit"
+            description: "{{ $labels.pod }} is using more than 85% of its memory limit."

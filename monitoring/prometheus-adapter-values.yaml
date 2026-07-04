@@ -1,0 +1,23 @@
+# Helm values for prometheus-adapter - this bridges Prometheus metrics into
+# the Kubernetes custom.metrics.k8s.io API, which is what the HPA actually
+# reads from. Install with:
+#   helm install prometheus-adapter prometheus-community/prometheus-adapter \
+#     --namespace monitoring \
+#     -f monitoring/prometheus-adapter-values.yaml
+
+prometheus:
+  url: http://kube-prometheus-stack-prometheus.monitoring.svc
+  port: 9090
+
+rules:
+  default: false
+  custom:
+    - seriesQuery: 'app_http_requests_total{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace: { resource: "namespace" }
+          pod: { resource: "pod" }
+      name:
+        matches: "app_http_requests_total"
+        as: "http_requests_per_second"
+      metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)'

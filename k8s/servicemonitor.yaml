@@ -1,0 +1,23 @@
+# Requires the Prometheus Operator (installed via the kube-prometheus-stack
+# Helm chart - see monitoring/prometheus-values.yaml). The Operator watches
+# for ServiceMonitor objects and automatically updates Prometheus's scrape
+# config - no manual prometheus.yml editing required.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: demo-app
+  namespace: demo-app
+  labels:
+    # Must match the serviceMonitorSelector in prometheus-values.yaml
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: demo-app
+  namespaceSelector:
+    matchNames:
+      - demo-app
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
